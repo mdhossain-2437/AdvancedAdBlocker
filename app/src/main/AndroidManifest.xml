@@ -20,6 +20,11 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".SettingsActivity"
+            android:exported="true" />
+        <activity android:name=".LogsActivity"
+            android:exported="true" />
+
         <service
             android:name=".vpn.AdBlockVpnService"
             android:permission="android.permission.BIND_VPN_SERVICE"

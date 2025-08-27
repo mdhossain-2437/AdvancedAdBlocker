@@ -11,6 +11,7 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.adblocker.filter.SimpleDnsBlocker
+import com.example.adblocker.filter.FilterManager
 import com.example.adblocker.native.NativeProxy
 import kotlinx.coroutines.*
 import java.io.File
@@ -100,15 +101,36 @@ class AdBlockVpnService : VpnService() {
 
             // Write current blocklist to app files and start native DNS proxy
             try {
+                val fm = FilterManager(this)
+                // Ensure default subscriptions and schedule periodic updates (6 hours)
+                fm.ensureDefaultSubscriptions()
+                fm.scheduleUpdates(
+                    listOf(
+                        "https://easylist.to/easylist/easylist.txt",
+                        "https://easylist.to/easylist/easyprivacy.txt",
+                        "https://ublockorigin.github.io/uAssets/filters/filters.txt",
+                        "https://ublockorigin.github.io/uAssets/filters/privacy.txt"
+                    ),
+                    360
+                )
+                // Export a host-only blocklist for the native proxies
                 val blockFile = File(filesDir, "blocked_domains.txt")
-                // simple exporter: copy from assets filters/basic_blocklist.txt (in production, export compiled list)
-                assets.open("filters/basic_blocklist.txt").use { ins ->
-                    blockFile.outputStream().use { out -> ins.copyTo(out) }
+                var exported = 0
+                try {
+                    exported = fm.exportBlockedDomains(blockFile)
+                } catch (_: Throwable) { }
+                if (exported == 0 || !blockFile.exists() || blockFile.length() == 0L) {
+                    // fallback to bundled asset on first run
+                    assets.open("filters/basic_blocklist.txt").use { ins ->
+                        blockFile.outputStream().use { out -> ins.copyTo(out) }
+                    }
                 }
-                // start dns proxy on 5353 listening on all interfaces, VPN will be configured to use 127.0.0.1
+
+                // Start DNS proxy on 5353 listening on all interfaces; VPN will use 127.0.0.1 (note: user-space apps typically cannot bind to port 53)
                 dnsPtr = NativeProxy.startDnsProxy(5353, blockFile.absolutePath, "8.8.8.8:53")
                 Log.i("AdBlockVpnService", "Started native DNS proxy: ptr=$dnsPtr")
-                // start advanced HTTP proxy for request-level blocking (listens on 8888)
+
+                // Start advanced HTTP proxy for request-level blocking (listens on 8888)
                 try {
                     val advPtr = NativeProxy.startAdvancedProxy(8888, blockFile.absolutePath)
                     Log.i("AdBlockVpnService", "Started advanced HTTP proxy: ptr=$advPtr")
@@ -137,6 +159,11 @@ class AdBlockVpnService : VpnService() {
         }
     }
 
+    override fun onRevoke() {
+        Log.i("AdBlockVpnService", "VPN revoked by system")
+        stopSelf()
+    }
+
     override fun onDestroy() {
         scope.cancel()
         vpnInterface?.close()
@@ -153,11 +180,6 @@ class AdBlockVpnService : VpnService() {
         super.onDestroy()
     }
 
-    override fun onRevoke() {
-        // Called when the system revokes the VPN permissions
-        onDestroy()
-        stopSelf()
-    }
 
     private fun ensureNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 # Install dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    openjdk-11-jdk-headless \
+    openjdk-17-jdk-headless \
     wget \
     unzip \
     git \
@@ -31,10 +31,16 @@ RUN sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-
 
 WORKDIR /workspace
 COPY . /workspace
-RUN chmod +x ./gradlew || true
+
+# Install Gradle and build using system Gradle (wrapper not present)
+ENV GRADLE_VERSION=8.8
+RUN wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -O /tmp/gradle.zip && \
+    unzip -q /tmp/gradle.zip -d /opt/gradle && \
+    ln -sf /opt/gradle/gradle-${GRADLE_VERSION}/bin/gradle /usr/bin/gradle && \
+    rm -f /tmp/gradle.zip
 
 # Build debug APK
-RUN ./gradlew assembleDebug --no-daemon --stacktrace
+RUN gradle assembleDebug --no-daemon --stacktrace
 
 # Output location
 VOLUME ["/out"]

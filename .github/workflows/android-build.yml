@@ -2,56 +2,51 @@ name: Android CI
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 11
-      uses: actions/setup-java@v4
-      with:
-        java-version: '11'
-        distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
 
-    - name: Download Android SDK tools
-      run: |
-        sudo mkdir -p /opt/android-sdk
-        sudo chown $USER /opt/android-sdk
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-101-10909630_latest.zip -O /tmp/cmdline.zip
-        unzip -q /tmp/cmdline.zip -d /tmp/cmdline
-        mkdir -p $HOME/.local/share/android-sdk/cmdline-tools
-        mv /tmp/cmdline $HOME/.local/share/android-sdk/cmdline-tools/latest
-        echo "ANDROID_SDK_ROOT=$HOME/.local/share/android-sdk" >> $GITHUB_ENV
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
 
-    - name: Install SDK packages
-      run: |
-        yes | $HOME/.local/share/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/.local/share/android-sdk "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;25.2.9519653" "cmake;3.22.1"
+      - name: Install SDK components
+        shell: bash
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;25.2.9519653" "cmake;3.22.1"
+          yes | sdkmanager --licenses
 
-    - name: Cache Gradle
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*','**/gradle-wrapper.properties') }}
-        restore-keys: ${{ runner.os }}-gradle- 
+      - name: Download Gradle 8.7
+        shell: bash
+        run: |
+          curl -sL https://services.gradle.org/distributions/gradle-8.7-bin.zip -o gradle.zip
+          unzip -q gradle.zip
+          echo "${{ github.workspace }}/gradle-8.7/bin" >> $GITHUB_PATH
+          gradle -v
 
-    - name: Grant execute to gradlew
-      run: chmod +x ./gradlew
+      - name: Build Debug APK
+        shell: bash
+        run: gradle -Dorg.gradle.jvmargs="-Xmx4g" assembleDebug
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace
+      - name: Build Release APK
+        shell: bash
+        run: gradle -Dorg.gradle.jvmargs="-Xmx4g" assembleRelease
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: debug-apk
-        path: app/build/outputs/apk/debug/*.apk
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
