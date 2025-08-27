@@ -1,0 +1,1 @@
+feat: native JNI adblock bridge stub integrated with FilterManager and CMake 

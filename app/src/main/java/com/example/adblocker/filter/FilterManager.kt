@@ -65,6 +65,8 @@ class FilterManager(private val context: Context) {
             comp.add(l)
         }
         comp.build()
+        // Initialize optional native engine with full rule set (no-op if native not present)
+        try { AdblockEngine.tryInit(lines) } catch (_: Throwable) { }
         val domains = extractDomainsFromLists(text)
         synchronized(this) {
             runtimeCompiler = comp
