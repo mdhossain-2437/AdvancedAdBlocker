@@ -1,0 +1,4 @@
+# Simple blocklist - domains only (for demo)
+example.com
+ads.example.org
+tracker.test
