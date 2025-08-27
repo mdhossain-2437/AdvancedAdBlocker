@@ -1,0 +1,10 @@
+feat: Phase 1 production prep — multi-subscription filters, updater, UI, VPN wiring
+
+- Add AdblockEngine Kotlin stub (JNI bridge placeholder; no runtime impact if native not present)
+- Upgrade FilterUpdateWorker delegation to ManagerUpdateWorker
+- Ensure VPN service creates notification channel, ensures defaults, schedules updates (6h), and exports blocked_domains.txt
+- SettingsActivity: multiple URLs input, defaults button, export-now action
+- FilterManager (existing advanced version retained): multi-subscription support, ETag/Last-Modified, host-only export, matches(), ensureDefaultSubscriptions()
+- Build: Kotlin stdlib 1.9.24; root Kotlin plugin 1.9.24
+
+Next: Phase 2 integrate adblock-rust via JNI (engine FFI), wire DNS/HTTP to semantic engine

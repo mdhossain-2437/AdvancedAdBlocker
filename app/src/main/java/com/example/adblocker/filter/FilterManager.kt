@@ -1,4 +1,4 @@
- package com.example.adblocker.filter
+  package com.example.adblocker.filter
 
 import android.content.Context
 import android.util.Log
