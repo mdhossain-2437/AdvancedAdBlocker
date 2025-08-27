@@ -40,7 +40,7 @@ android {
 
 dependencies {
   implementation("com.squareup.okio:okio:3.5.0")
-  implementation("org.jetbrains.kotlin:kotlin-stdlib:1.8.21")
+  implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.24")
   implementation("androidx.core:core-ktx:1.10.1")
   implementation("androidx.appcompat:appcompat:1.6.1")
   implementation("com.google.android.material:material:1.9.0")

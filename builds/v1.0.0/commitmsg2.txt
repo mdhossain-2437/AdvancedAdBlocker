@@ -1,0 +1,1 @@
+ci: bump Kotlin to 1.9.24; adjust Dockerfile to system Gradle 
